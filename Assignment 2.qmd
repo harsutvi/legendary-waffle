@@ -1,0 +1,97 @@
+---
+title: "Assignment 2"
+format: pdf
+editor: visual
+echo: false
+---
+
+## Assignment 2
+
+```{r, warning=FALSE, message = FALSE}
+rm(list=ls())
+library(tidyverse)
+library(rvest)
+```
+
+```{r, warning=FALSE, message = FALSE}
+url <- "https://www.motor.no/aktuelt/motors-store-vintertest-av-rekkevidde-pa-elbiler/217132"
+
+df <- read_html(url) %>% 
+  html_element("table") %>%  
+  html_table()
+
+
+
+colnames(df) <- df[1,] #naming columns after row 1
+df <- df[-1, ] %>% #removing row 1
+  
+  separate("WLTP-tall", #splitting the km- and kwh string into 2 columns
+           into = c("wltp_km", "wltp_kwh"), 
+           sep = "/") %>% 
+   
+  separate("STOPP", #removing the km from the string
+           into = "stop", 
+           sep = " ") %>% 
+   
+  separate("wltp_km", #removing the km from the string
+           into = "wltp",
+           sep = " ")
+
+```
+
+```{r}
+is.na(df) <- df == "x" #changing the "x" value to NA
+df <- df %>% 
+  mutate(across(c('wltp', 'stop'), as.numeric)) #changing wltp and stopp to numeric
+
+
+```
+
+```{r, warning=FALSE}
+df %>% 
+  ggplot(aes(x = wltp, y = stop)) + #plotting
+  geom_point() +
+  geom_abline(slope = 1, color = "red") + #to get 45 degree line the slope would need to be 1
+  scale_x_continuous(limits = c(200, 600)) +
+  scale_y_continuous(limits = c(200, 600)) +
+  annotate("text", x=250, y = 550, label = "Advertised range", color = "red", size = 3.5) +
+  annotate("text", x=250, y = 500, label = "Test result", color = "black", size = 3.5) +
+  theme_minimal() +
+  labs(
+    x = "WLPT Range (km)",
+    y = "Stop Range (km)",
+    title = "The Cold Truth: Advertisment vs. Reality",
+    subtitle = "Comparison of the expected, and actual driving range for Electrical cars, in winter condition.") +
+  theme(plot.title = element_text(size = 12),
+        plot.subtitle = element_text(size = 8),
+        axis.title = element_text(size = 10))
+```
+
+```{r}
+lm(stop ~ wltp, data = df)
+```
+
+The regression line would intercept the x-axis on -26.645 with 0.8671 rate of increase(slope).
+
+```{r, warning=FALSE, message=FALSE}
+
+df %>% 
+  ggplot(aes(x = wltp, y = stop)) +
+  geom_point() +
+  geom_abline(slope = 1, color = "red") +
+  scale_x_continuous(limits = c(200, 600)) +
+  scale_y_continuous(limits = c(200, 600)) +
+  annotate("text", x=250, y = 550, label = "Advertised range", color = "red", size = 3.5) +
+  annotate("text", x=250, y = 500, label = "Test result", color = "black", size = 3.5) +
+  annotate("text", x=250, y = 450, label = "Average Of Test", color = "blue", size = 3.5) +
+  theme_minimal() +
+  geom_smooth(method = lm) +
+  labs(
+    x = "WLPT Range (km)",
+    y = "Stop Range (km)",
+    title = "The Cold Truth: Advertisment vs. Reality",
+    subtitle = "Comparison of the expected, and actual(regression) driving range for Electrical cars, in winter condition.") +
+  theme(plot.title = element_text(size = 12),
+        plot.subtitle = element_text(size = 8),
+        axis.title = element_text(size = 10))
+```
